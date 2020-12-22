@@ -1,6 +1,14 @@
 # Important-Notes
 Important Notes
-
+===========================================
+Sum Of Array
+  this.totalCountmask = this.totalRecord.reduce(
+        (a, b) => +a + +b.result.Count,
+        0
+      );
+      
+      
+ ========================================= 
 WebForm Aspx Custom Routing
 
  RegisterCustomRoutes(RouteTable.Routes);
