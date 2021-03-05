@@ -39,3 +39,5 @@ Angaulr DataTable Render
       this.dtTrigger.next();
     });
   }
+  =================Ef Core Db To Schema +++++++++=====
+  Scaffold-DbContext "Server=servername;Database=LT;Trusted_Connection=True;" Microsoft.EntityFrameworkCore.SqlServer -OutputDir EFCore
