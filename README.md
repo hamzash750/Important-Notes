@@ -63,20 +63,26 @@ Select Individual components tab and check Entity Framework 6 tools under SDK's,
 
 ///Stripe Payment
 
+
+
  public ActionResult Checkout(Models.Card carddetails)
         {
+        
             var CurrentData = (CheckoutDetails)TempData["checkout"];
+            
             if (!string.IsNullOrEmpty(carddetails.CardNumber))
             {
+            
                 CurrentData.card = carddetails;
             }
             else
             {
+            
                 carddetails = CurrentData.card;
             }
             try
             {
-                Stripe.StripeConfiguration.SetApiKey("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");
+               
                 //Stripe.StripeConfiguration.SetApiKey("sk_test_51J0X4lJkBoFS5QWm9CMcO2d1H0GLquzpX27PNiOWfthnulBxbEnPPiVrLhRf1iOm3o1g9kBc3eBK0kzGn3dzNpX400hZlWZOV6");
                 Stripe.TokenCardOptions card = new Stripe.TokenCardOptions();
                 card.Name = carddetails.FullName;
