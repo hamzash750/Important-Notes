@@ -61,7 +61,9 @@ Select Individual components tab and check Entity Framework 6 tools under SDK's,
 
 
 
-Stripe Payment public ActionResult Checkout(Models.Card carddetails)
+///Stripe Payment
+
+ public ActionResult Checkout(Models.Card carddetails)
         {
             var CurrentData = (CheckoutDetails)TempData["checkout"];
             if (!string.IsNullOrEmpty(carddetails.CardNumber))
