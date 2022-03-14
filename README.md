@@ -208,3 +208,66 @@ Select Individual components tab and check Entity Framework 6 tools under SDK's,
             TempData["checkout"] = CurrentData;
             return View();
         }
+
+
+
+
+
+ public static string ChregeTaxUsingStripe(String cardnumber, String expirationDate, String cvv, double pkgamount)
+ 
+    {
+        var res = "";
+        try
+        {
+
+            Stripe.StripeConfiguration.SetApiKey("sk_test_51J0X4lJkBoFS5QWm9CMcO2d1H0GLquzpX27PNiOWfthnulBxbEnPPiVrLhRf1iOm3o1g9kBc3eBK0kzGn3dzNpX400hZlWZOV6");
+            Stripe.TokenCardOptions card = new Stripe.TokenCardOptions();
+            card.Name = "Hamza Shafiq";
+            card.Number = cardnumber;
+            card.ExpYear = Convert.ToInt32("2024");
+            card.ExpMonth = Convert.ToInt32("12");
+            card.Cvc = cvv;
+            //Assign Card to Token Object and create Token  
+            Stripe.TokenCreateOptions token = new Stripe.TokenCreateOptions();
+            token.Card = card;
+            Stripe.TokenService serviceToken = new Stripe.TokenService();
+            Stripe.Token newToken = serviceToken.Create(token);
+
+            Stripe.CustomerCreateOptions myCustomer = new Stripe.CustomerCreateOptions();
+            myCustomer.Email = "Hamzash75@gmail.com";
+            myCustomer.Source = newToken.Id;
+            var customerService = new Stripe.CustomerService();
+            Stripe.Customer stripeCustomer = customerService.Create(myCustomer);
+
+            var options = new Stripe.ChargeCreateOptions
+            {
+                Amount = Convert.ToInt32((Convert.ToDouble(10)) * 100),
+                Currency = "USD",
+                ReceiptEmail ="Hamzash75@gmail.com",
+                Customer = stripeCustomer.Id,
+                Description = Convert.ToString(newToken.Id), //Optional  
+            };
+            //and Create Method of this object is doing the payment execution.  
+            var service = new Stripe.ChargeService();
+      
+            try
+            {
+                Stripe.Charge charge = service.Create(options);
+                res = charge;
+
+            }
+            catch (Exception e)
+            {
+                res = e.Message;
+
+                //throw;
+            } // This will do the Payment  
+        }
+        catch (Exception exp)
+        {
+
+            res = exp.Message;
+
+        }
+        return res;
+    }
