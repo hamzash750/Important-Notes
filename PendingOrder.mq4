@@ -28,6 +28,12 @@ string GBPPair="GBPUSDm";
 string US30Pair="US30m";
 string CADPair="USDCADm";
 string NASPair="USTECm";
+extern bool      UseTimeFilter       = true;
+extern string    TimeStartTrade      = "20:00:00";
+extern string    TimeStopTrade       = "22:00:00";
+bool TimeToTrade;
+double LotSize;
+extern double    Risk          = 10.0;//Percent Risk
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -86,8 +92,22 @@ int differnce=0;
 int stopeLoss=0;
 void OnTick()
   {
-   CheckOpenOrders();
-   OrderOpen();
+   if(UseTimeFilter==true)
+     {
+      TimeToTrade=true;
+      //---
+      if((StringToTime(TimeStartTrade)<StringToTime(TimeStopTrade))&&((TimeGMT()>=StringToTime(TimeStartTrade))&&(TimeGMT()<StringToTime(TimeStopTrade))))
+         TimeToTrade=true;
+      if((StringToTime(TimeStartTrade)>StringToTime(TimeStopTrade))&&((TimeGMT()>=StringToTime(TimeStartTrade))||(TimeGMT()<StringToTime(TimeStopTrade))))
+         TimeToTrade=true;
+      //---
+      if(TimeToTrade==true)
+        {
+         CheckOpenOrders();
+         OrderOpen();
+        }
+     }
+
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -96,7 +116,6 @@ void OrderOpen()
   {
    if(TotalOrderPair<TotalOrder)
      {
-
       double BidPrice = MarketInfo(CurrencyPair, MODE_BID);
       double AskPrice = MarketInfo(CurrencyPair, MODE_ASK);
       differnce=PointDiffernce+differnce;
@@ -111,12 +130,21 @@ void openOrder(string pair,double PairAskPrice,double PairDiffernce)
    bool res;
    double buyAsk=(PairAskPrice+PairDiffernce);
    double sellAsk=(PairAskPrice-PairDiffernce);
-   res=OrderSend(pair,OP_BUYSTOP,0.01,buyAsk,0,NULL,NULL);
-   res=OrderSend(pair,OP_SELLSTOP,0.01,sellAsk,0,NULL,NULL);
+
+   res=OrderSend(pair,OP_BUYSTOP,getLot(),buyAsk,0,NULL,NULL);
+   res=OrderSend(pair,OP_SELLSTOP,getLot(),sellAsk,0,NULL,NULL);
    if(!res)
       Print("Error in OrderModify. Error code=",GetLastError());
    else
       Print("Order openOrder successfully."+pair+(PairAskPrice+PairDiffernce));
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+double getLot()
+  {
+  // return 0.01;
+   return MathMin(MathMax((MathRound((AccountFreeMargin()*Risk/100000)/MarketInfo(CurrencyPair,MODE_LOTSTEP))*MarketInfo(CurrencyPair,MODE_LOTSTEP)),MarketInfo(CurrencyPair,MODE_MINLOT)),MarketInfo(CurrencyPair,MODE_MAXLOT));
   }
 //+------------------------------------------------------------------+
 //| Timer function                                                   |
@@ -130,6 +158,8 @@ void CheckOpenOrders()
    TotalProfit=0;
    selldiffernce=0;
    buydiffernce=0;
+   buyCount=0;
+   sellCount=0;
 // We need to scan all the open and pending orders to see if there are any.
 // OrdersTotal returns the total number of market and pending orders.
 // What we do is scan all orders and check if they are of the same symbol as the one where the EA is running.
@@ -139,10 +169,11 @@ void CheckOpenOrders()
       OrderSelect(i, SELECT_BY_POS, MODE_TRADES);
       if(OrderSymbol()==CurrencyPair)
         {
-        if((TotalGBuyOrder+TotalGSellOrder)==TotalOrder){
-        
-        RemoveAllOrders();
-        }
+         if((TotalGBuyOrder+TotalGSellOrder)==TotalOrder)
+           {
+            differnce=0;
+            RemoveAllOrders();
+           }
          // If the pair of the order is equal to the pair where the EA is running.
          if(OrderType()==OP_BUY)
            {
@@ -174,7 +205,7 @@ void CheckOpenOrders()
         }
 
      }
-     
+
    TotalGBuyOrder=totalBuy;
    TotalGSellOrder=totalSell;
    TotalGPBuyOrder=totalPBuy;
@@ -187,11 +218,19 @@ void CheckOpenOrders()
 //|                                                                  |
 //+------------------------------------------------------------------+
 int selldiffernce=0;
+int sellCount=0;
 void ModifyOrderForSellStop(int currentOrderTicket)
   {
    double AskPrice = MarketInfo(OrderSymbol(), MODE_ASK);
    if(TotalGBuyOrder>TotalGSellOrder)
      {
+      Print("Order modified For Sell.");
+      if(sellCount<(TotalGBuyOrder-TotalGSellOrder))
+        {
+         Print("Order modified Sell Condition.");
+         selldiffernce=0;
+         sellCount=sellCount+1;
+        }
       selldiffernce=selldiffernce+PointDiffernce;
       if(AskPrice-selldiffernce>OrderOpenPrice())
         {
@@ -209,11 +248,19 @@ void ModifyOrderForSellStop(int currentOrderTicket)
 //+------------------------------------------------------------------+d
 
 int buydiffernce=0;
+int buyCount=0;
 void ModifyOrderForBuyStop(int currentOrderTicket)
   {
    double AskPrice = MarketInfo(OrderSymbol(), MODE_ASK);
    if(TotalGBuyOrder<TotalGSellOrder)
      {
+      Print("Order modified For Buy.");
+      if(buyCount<(TotalGSellOrder-TotalGBuyOrder))
+        {
+         Print("Order modified Buy Condition.");
+         buydiffernce=0;
+         buyCount=buyCount+1;
+        }
       buydiffernce=buydiffernce+PointDiffernce;
       if(AskPrice+buydiffernce<OrderOpenPrice())
         {
@@ -262,14 +309,14 @@ void ShowOrderInBlock()
    ObjectSet("txtEquity", OBJPROP_XDISTANCE,240);
    ObjectSet("txtEquity", OBJPROP_YDISTANCE,20);
    ObjectSetText("txtEquity",txtEquity,14,"Tohoma",White);
-   
+
    string txtTotalBuy="Total Buy Order = "+TotalGBuyOrder;
    ObjectCreate("txtTotalBuy", OBJ_LABEL, 0, 0, 0);
    ObjectSet("txtTotalBuy", OBJPROP_CORNER,0);
    ObjectSet("txtTotalBuy", OBJPROP_XDISTANCE,10);
    ObjectSet("txtTotalBuy", OBJPROP_YDISTANCE,40);
    ObjectSetText("txtTotalBuy",txtTotalBuy,10,"Tohoma",White);
-   
+
    string txtTotalSell="Total Sell Order = "+TotalGSellOrder;
    ObjectCreate("txtTotalSell", OBJ_LABEL, 0, 0, 0);
    ObjectSet("txtTotalSell", OBJPROP_CORNER,0);
@@ -298,17 +345,20 @@ void ShowOrderInBlock()
    ObjectSet("txtTotalOrder", OBJPROP_XDISTANCE,10);
    ObjectSet("txtTotalOrder", OBJPROP_YDISTANCE,75);
    ObjectSetText("txtTotalOrder",txtTotalOrder,10,"Tohoma",White);
-    string txtTotalProfit="Total Profit = "+NormalizeDouble(TotalProfit,2);
+   string txtTotalProfit="Total Profit = "+NormalizeDouble(TotalProfit,2);
    ObjectCreate("txtTotalProfit", OBJ_LABEL, 0, 0, 0);
    ObjectSet("txtTotalProfit", OBJPROP_CORNER,0);
    ObjectSet("txtTotalProfit", OBJPROP_XDISTANCE,150);
    ObjectSet("txtTotalProfit", OBJPROP_YDISTANCE,75);
-   if(TotalProfit>0){
-   ObjectSetText("txtTotalProfit",txtTotalProfit,12,"Arial",Blue);
-   }else{
+   if(TotalProfit>0)
+     {
+      ObjectSetText("txtTotalProfit",txtTotalProfit,12,"Arial",Blue);
+     }
+   else
+     {
       ObjectSetText("txtTotalProfit",txtTotalProfit,12,"Arial",Red);
-   }
-   
+     }
+
   }
 
 //+------------------------------------------------------------------+
@@ -400,4 +450,5 @@ void CloseOrders()
          Print("ERROR - Unable to close the order - ", OrderTicket(), " - ", GetLastError());
      }
   }
+//+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
