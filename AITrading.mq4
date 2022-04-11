@@ -7,11 +7,12 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 #property strict
- float PointDiffernce = 2;
+float PointDiffernce = 2;
 input int MAGICNUM = 20131114;
 input int FMA = 35;
 input int SMA = 200;
 input double TotalOrder     = 1;
+input int TakeProfit     = 5;
 double StopLoss       =0.50;
 bool removeFromThisChartOnly = true;
 long ChartColor;
@@ -37,7 +38,7 @@ bool TimeToTrade;
 bool BuySetup=false;
 bool SellSetup=false;
 double LotSize;
- double    Risk          = 10.0;//Percent Risk
+double    Risk          = 10.0;//Percent Risk
 enum ENUM_CUSTOMTIMEFRAMES
   {
    CURRENT=PERIOD_CURRENT,             //CURRENT PERIOD
@@ -135,18 +136,42 @@ void OnTick()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
+bool BuyPosition=NULL;
+bool SellPosition=NULL;
 void startTrading()
   {
-   if(TotalOrderPair<TotalOrder)
+//if(TotalOrderPair<TotalOrder)
      {
       if((getSimpleMA(FMA)>getSimpleMA(SMA)&&getExponentialMA(FMA)>getExponentialMA(SMA)&&getSmoothedMA(FMA)>getSmoothedMA(SMA)&&getLinearMA(FMA)>getLinearMA(SMA)))
         {
-         sendBuyOrder();
+         if(BuyPosition)
+           {
+            SellPosition=true;
+            sendBuyOrder();
+            BuyPosition=false;
+           }
+         else
+            if(BuyPosition==NULL)
+              {
+               SellPosition=true;
+              }
+
         }
       else
          if((getSimpleMA(FMA)<getSimpleMA(SMA)&&getExponentialMA(FMA)<getExponentialMA(SMA)&&getSmoothedMA(FMA)<getSmoothedMA(SMA)&&getLinearMA(FMA)<getLinearMA(SMA)))
            {
-            sendSellOrder();
+            if(SellPosition)
+              {
+               BuyPosition=true;
+               sendSellOrder();
+               SellPosition=false;
+              }
+            else
+               if(SellPosition==NULL)
+                 {
+                  BuyPosition=true;
+                 }
+
            }
      }
   }
@@ -220,7 +245,7 @@ void sendBuyOrder()
    bool res;
    double BidPrice = MarketInfo(CurrencyPair, MODE_BID);
    double AskPrice = MarketInfo(CurrencyPair, MODE_ASK);
-   res=OrderSend(CurrencyPair,OP_BUY, getLot(),AskPrice,0,candelWickLow(1),NULL,"SMA Trend",MAGICNUM,0,Blue);
+   res=OrderSend(CurrencyPair,OP_BUY, getLot(),AskPrice,0,NULL,NULL,"SMA Trend",MAGICNUM,0,Blue);
    if(!res)
       Print("Error in sendBuyOrder. Error code=",GetLastError());
    else
@@ -235,7 +260,7 @@ void sendSellOrder()
    bool res;
    double BidPrice = MarketInfo(CurrencyPair, MODE_BID);
    double AskPrice = MarketInfo(CurrencyPair, MODE_ASK);
-   res=OrderSend(CurrencyPair,OP_SELL, getLot(),BidPrice,0,candelWickHigh(1),NULL,"SMA Trend",MAGICNUM,0,Red);
+   res=OrderSend(CurrencyPair,OP_SELL, getLot(),BidPrice,0,NULL,NULL,"SMA Trend",MAGICNUM,0,Red);
    if(!res)
       Print("Error in sendSellOrder. Error code=",GetLastError());
    else
@@ -298,6 +323,7 @@ void CheckOpenOrders()
 // What we do is scan all orders and check if they are of the same symbol as the one where the EA is running.
    for(int i = 0 ; i < OrdersTotal() ; i++)
      {
+
       // We select the order of index i selecting by position and from the pool of market/pending trades.
       OrderSelect(i, SELECT_BY_POS, MODE_TRADES);
       if(OrderSymbol()==CurrencyPair)
@@ -355,6 +381,10 @@ int sellCount=0;
 void ModifyOrderForSellStop(int currentOrderTicket)
   {
    float AskPrice = MarketInfo(OrderSymbol(), MODE_ASK);
+   if(OrderProfit()>TakeProfit)
+     {
+      OrderClose(currentOrderTicket,OrderLots(),AskPrice,3,Red);
+     }
    if(TotalGBuyOrder>TotalGSellOrder)
      {
       Print("Order modified For Sell.");
@@ -385,6 +415,10 @@ int buyCount=0;
 void ModifyOrderForBuyStop(int currentOrderTicket)
   {
    float AskPrice = MarketInfo(OrderSymbol(), MODE_ASK);
+   if(OrderProfit()>TakeProfit)
+     {
+      OrderClose(currentOrderTicket,OrderLots(),AskPrice,3,Red);
+     }
    if(TotalGBuyOrder<TotalGSellOrder)
      {
       Print("Order modified For Buy.");
@@ -423,7 +457,7 @@ void ModifyOrderForBuy(int currentOrderTicket)
       takeProfit=(OrderOpenPrice()+5);
      }
    bool res;
-   res= OrderModify(currentOrderTicket,OrderOpenPrice(),candelWickLow(1),NULL,0,Blue);
+   res= OrderModify(currentOrderTicket,OrderOpenPrice(),NULL,NULL,0,Blue);
    if(!res)
       Print("Error in OrderModify. Error code=",GetLastError());
    else
@@ -446,7 +480,7 @@ void ModifyOrderForSell(int currentOrderTicket)
       takeProfit=(OrderOpenPrice()-5);
      }
    bool res;
-   res= OrderModify(currentOrderTicket,OrderOpenPrice(),candelWickHigh(1),NULL,0,Blue);
+   res= OrderModify(currentOrderTicket,OrderOpenPrice(),NULL,NULL,0,Blue);
    if(!res)
       Print("Error in OrderModify. Error code=",GetLastError());
    else
