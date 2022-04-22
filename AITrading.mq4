@@ -8,11 +8,13 @@
 #property version   "1.00"
 #property strict
 float PointDiffernce = 2;
-input int MAGICNUM = 20131114;
-input int FMA = 35;
-input int SMA = 200;
-input double TotalOrder     = 1;
-input int TakeProfit     = 5;
+int MAGICNUM=0;
+input int SimpleFMA = 8;
+input int SimpleSMA = 32;
+input int ExponentialFMA = 4;
+input int ExponentialSMA = 16;
+double TotalOrder     = 1;
+int TakeProfit     = 5;
 double StopLoss       =0.50;
 bool removeFromThisChartOnly = true;
 long ChartColor;
@@ -24,16 +26,16 @@ int TotalGPBuyOrder=0;
 int TotalGPSellOrder=0;
 int TotalOrderPair=0;
 double TotalProfit=0;
-input string CurrencyPair="XAUUSDm";
+string CurrencyPair="";
 string EuroPair="EURUSDm";
 string JPYPair="USDJPYm";
 string GBPPair="GBPUSDm";
 string US30Pair="US30m";
 string CADPair="USDCADm";
 string NASPair="USTECm";
-extern bool      UseTimeFilter       = false;
-extern string    TimeStartTrade      = "20:00:00";
-extern string    TimeStopTrade       = "22:00:00";
+bool      UseTimeFilter       = false;
+string    TimeStartTrade      = "20:00:00";
+string    TimeStopTrade       = "22:00:00";
 bool TimeToTrade;
 bool BuySetup=false;
 bool SellSetup=false;
@@ -58,7 +60,9 @@ extern ENUM_CUSTOMTIMEFRAMES SRTimeframe=CURRENT;
 //+------------------------------------------------------------------+
 int OnInit()
   {
-
+   CurrencyPair=Symbol();
+   GenerateMagicNumber();
+   Print(CurrencyPair,MAGICNUM);
    ChartColor=ChartGetInteger(0,CHART_COLOR_BACKGROUND,0);
    BackgroundName="Background-"+WindowExpertName();
    ChartBackground(BackgroundName,(color)ChartColor,0,15,300,80);
@@ -70,8 +74,17 @@ int OnInit()
    ObjectSetText("LastLine2",LastLine2,14,"Tohoma",White);
    EventSetTimer(5);
 //---
+
    return(INIT_SUCCEEDED);
 
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void GenerateMagicNumber()
+  {
+   for(int cnt=0; cnt<StringLen(CurrencyPair); cnt++)
+      MAGICNUM+=(StringGetChar(CurrencyPair,cnt)*(cnt+1))+98333;
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -142,13 +155,16 @@ void startTrading()
   {
 //if(TotalOrderPair<TotalOrder)
      {
-      if((getSimpleMA(FMA)>getSimpleMA(SMA)&&getExponentialMA(FMA)>getExponentialMA(SMA)&&getSmoothedMA(FMA)>getSmoothedMA(SMA)&&getLinearMA(FMA)>getLinearMA(SMA)))
+      if(getSimpleMA(SimpleFMA)>getSimpleMA(SimpleSMA)&&getExponentialMA(ExponentialFMA)>getExponentialMA(ExponentialSMA))
         {
+
          if(BuyPosition)
            {
+            RemoveAllOrders();
             SellPosition=true;
             sendBuyOrder();
             BuyPosition=false;
+
            }
          else
             if(BuyPosition==NULL)
@@ -158,13 +174,16 @@ void startTrading()
 
         }
       else
-         if((getSimpleMA(FMA)<getSimpleMA(SMA)&&getExponentialMA(FMA)<getExponentialMA(SMA)&&getSmoothedMA(FMA)<getSmoothedMA(SMA)&&getLinearMA(FMA)<getLinearMA(SMA)))
+         if(getSimpleMA(SimpleFMA)<getSimpleMA(SimpleSMA)&&getExponentialMA(ExponentialFMA)<getExponentialMA(ExponentialSMA))
            {
             if(SellPosition)
               {
+
+               RemoveAllOrders();
                BuyPosition=true;
                sendSellOrder();
                SellPosition=false;
+
               }
             else
                if(SellPosition==NULL)
@@ -337,13 +356,13 @@ void CheckOpenOrders()
            {
             totalBuy=totalBuy+1;
             TotalProfit=TotalProfit+OrderProfit();
-            ModifyOrderForBuy(OrderTicket());
+            //  ModifyOrderForBuy(OrderTicket());
            }
          if(OrderType()==OP_SELL)
            {
             TotalProfit=TotalProfit+OrderProfit();
             totalSell=totalSell+1;
-            ModifyOrderForSell(OrderTicket());
+            // ModifyOrderForSell(OrderTicket());
            }
          if(OrderType()==OP_BUYSTOP)
            {
