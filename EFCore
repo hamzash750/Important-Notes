@@ -3,3 +3,13 @@ MyContext : DbContext
 Create Entity Frame Work Desgin 
 Create Entity Frame Tools
 Create Entity Frame Sql Server
+
+
+visual studio command
+Add-Migration Init
+Update-Database
+
+
+Visual Studio Code command
+dotnet ef migrations add vscode -s ..\PropertyManagement.API\
+dotnet ef migrations add vscode -s ..\PropertyManagement.API\
